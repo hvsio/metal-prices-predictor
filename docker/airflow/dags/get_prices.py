@@ -49,7 +49,7 @@ def get_metals_prices():
         timestamp = str(resp.json()['timestamp'])
         s3hook = S3Hook('aws')
         s3hook.load_string(string_data=json.dumps(
-            prices), key=f"{timestamp}.json", bucket_name=Variable.get("bucket_name"), replace=True)
+            prices), key=f"{timestamp}.json", bucket_name=Variable.get("bucket_name_api_data"), replace=True)
 
         return timestamp
 
@@ -58,7 +58,7 @@ def get_metals_prices():
         s3hook = S3Hook('aws')
         postgres = PostgresHook(postgres_conn_id='postgres')
         data = s3hook.get_key(f"{timestamp}.json",
-                              bucket_name=Variable.get("bucket_name"))
+                              bucket_name=Variable.get("bucket_name_api_data"))
         if not data:
             raise AirflowFailException(
                 "Could not retrieve data from S3 bucket")
@@ -73,7 +73,7 @@ def get_metals_prices():
     delete_ingested_obj = S3DeleteObjectsOperator(
         aws_conn_id="aws",
         task_id="delete_ingested_obj",
-        bucket=Variable.get("bucket_name"),
+        bucket=Variable.get("bucket_name_api_data"),
         keys="{{ ti.xcom_pull(task_ids='insert_metal_data') }}.json",
     )
 

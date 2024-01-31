@@ -5,6 +5,7 @@ import datetime as dt
 from dotenv import load_dotenv, find_dotenv
 from airflow.models import Variable
 from ml.model import Model
+from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 
 load_dotenv(find_dotenv())
 # change it with native airflow logger
@@ -23,11 +24,12 @@ default_args = {
 def training():
     @task
     def train_model():
+        s3hook = S3Hook('aws')
         postgres = PostgresHook(postgres_conn_id='postgres')
         data = postgres.get_pandas_df('SELECT * FROM metals_analytics.metals_training_data')
         model = Model(["XAUUSD", "XAGUSD", "XPTUSD", "XPDUSD"], 0, 0)
         model.train(data=data)
-        model.save("/tmp/model1")
+        model.save("/tmp/models", s3hook, Variable.get("bucket_name_model_data"))
 
     train_model()
 

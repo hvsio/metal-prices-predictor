@@ -6,7 +6,7 @@ from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 from airflow.providers.amazon.aws.operators.s3 import S3CreateBucketOperator
 from airflow.models import Variable
-
+from airflow.operators.dummy import DummyOperator  
 
 load_dotenv(find_dotenv())
 # change it with native airflow logger
@@ -26,26 +26,45 @@ default_args = {
     default_args=default_args)
 def intialize_aws():
     @task
-    def check_for_bucket():
+    def check_for_bucket_model_data():
         s3 = S3Hook('aws')
-        is_bucket_present = s3.check_for_bucket('raw_api_data')
+        is_bucket_present = s3.check_for_bucket(Variable.get("bucket_name_model_data"))
         return is_bucket_present
 
-    @task.branch(task_id="branching")
-    def branching(bucket_exists):
+    @task.branch(task_id="branching_model")
+    def branching_model(bucket_exists):
         if bucket_exists:
             return 'bucket_ready'
         else:
-            return 'create_bucket'
+            return 'create_bucket_model_data'
+        
+    create_bucket_model_data = S3CreateBucketOperator(
+        aws_conn_id="aws",
+        task_id="create_bucket_model_data",
+        bucket_name=Variable.get("bucket_name_model_data"),
+    )
+        
+    @task
+    def check_for_bucket_api_data():
+        s3 = S3Hook('aws')
+        is_bucket_present = s3.check_for_bucket(Variable.get("bucket_name_api_data"))
+        return is_bucket_present
+
+    @task.branch(task_id="branching_api")
+    def branching_api(bucket_exists):
+        if bucket_exists:
+            return 'bucket_ready'
+        else:
+            return 'create_bucket_api_data'
 
     @task()
     def bucket_ready():
         print('Bucket is already created.')
 
-    create_bucket = S3CreateBucketOperator(
+    create_bucket_api_data = S3CreateBucketOperator(
         aws_conn_id="aws",
-        task_id="create_bucket",
-        bucket_name=Variable.get("bucket_name"),
+        task_id="create_bucket_api_data",
+        bucket_name=Variable.get("bucket_name_api_data"),
     )
 
     trigger_workflow = TriggerDagRunOperator(
@@ -54,8 +73,11 @@ def intialize_aws():
         trigger_rule="none_failed"
     )
 
-    branching(check_for_bucket()) >> [
-        create_bucket, bucket_ready()] >> trigger_workflow
+    branching_api(check_for_bucket_api_data()) >> [
+        create_bucket_api_data, bucket_ready()] >> trigger_workflow
+    
+    branching_model(check_for_bucket_model_data()) >> [
+        create_bucket_model_data, bucket_ready()] >> trigger_workflow
 
 
 intialize_aws()

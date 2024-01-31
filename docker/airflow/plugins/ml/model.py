@@ -1,8 +1,12 @@
+import datetime
+import time
 import numpy as np
 import pandas as pd
 from pathlib import Path
 from sktime.forecasting.arima import ARIMA
 from typing import List, Tuple
+from airflow.providers.amazon.aws.hooks.s3 import S3Hook
+import os
 
 rng = np.random.default_rng()
 
@@ -17,7 +21,7 @@ def generate_integrated_autocorrelated_series(
     p: float, mean: float, std: float, length: int
 ) -> np.ndarray:
     x = 0
-    abc = [x *  p * x + rng.normal(0, 1) for _ in range(length)]
+    abc = [x * p * x + rng.normal(0, 1) for _ in range(length)]
     return np.cumsum(abc * std) + mean
 
 
@@ -49,7 +53,7 @@ class Model:
         self.y_size = y_size
         self.models: dict[str, ARIMA] = {}
 
-    def train(self, use_generated_data: bool = False, data = False) -> None:
+    def train(self, use_generated_data: bool = False, data=False) -> None:
         # model expects a dataframe
         if use_generated_data:
             data, _, _ = generate_sample_data(
@@ -64,9 +68,14 @@ class Model:
             model.fit(dataset)
             self.models[ticker] = model
 
-    def save(self, path_to_dir: str) -> None:
+    def save(self, path_to_dir: str, s3_hook: S3Hook, bucket_name: str) -> None:
         path_to_dir = Path(path_to_dir)
         path_to_dir.mkdir(parents=True, exist_ok=True)
         for ticker in self.tickers:
             full_path = path_to_dir / ticker
             self.models[ticker].save(full_path)
+            s3_hook.load_file(
+                f"{full_path}.zip", key=f"{ticker}_{time.time()}.gzip", bucket_name=bucket_name, gzip=True)
+            if os.path.exists(f"{full_path}.zip"):
+                os.remove(f"{full_path}.zip")
+                os.remove(f"{full_path}.zip.gz")
