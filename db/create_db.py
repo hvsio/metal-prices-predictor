@@ -2,13 +2,14 @@ from dotenv import find_dotenv, load_dotenv
 from sqlalchemy import Sequence, Table, Column, Boolean, Integer, String, MetaData, Float, DateTime, ForeignKeyConstraint, text, inspect
 from sqlalchemy.schema import CreateSchema
 from sqlalchemy.exc import SQLAlchemyError
-from utils.utils import get_db_connection
+from utils import get_db_connection
 import logging
 import os
 
 logger = logging.getLogger("postgres_logger")
 
 load_dotenv(find_dotenv())
+
 schema_name = os.environ.get('schema_name')
 tablename_metals = os.environ.get('tablename_metals')
 tablename_metals_prices = os.environ.get('tablename_metals_prices')
@@ -33,7 +34,7 @@ metal_prices_table = Table(
            increment=1), primary_key=True,  autoincrement=True),
     Column("metal_type", String(20), nullable=True),
     ForeignKeyConstraint(["metal_type"], ["metals.ticker"], name="fk_metal_id", onupdate="CASCADE",
-        ondelete="SET NULL"),
+                         ondelete="SET NULL"),
     Column("price", Float, nullable=False),
     Column("timestamp", DateTime, nullable=False),
 )
@@ -50,17 +51,22 @@ with get_db_connection(True) as (engine, conn):
         # create tables
         metadata_obj.create_all(engine)
 
-        #
+        # add autoincrement to ids
         conn.execute(
-                text(
-                    """
+            text(
+                """
                     ALTER TABLE metals_analytics.metal_prices ALTER COLUMN id SET DEFAULT nextval('metals_sequence');
                     """
-                )
             )
+        )
 
-        # seed the db
-        with open('./sql/seed.sql', 'r') as f:
+        # create view with last 12h data for model training
+        with open('../sql/12h_metal_prices_view.sql', 'r') as f:
+            query = f.read()
+            conn.execute(text(query))
+
+        # seed the db with metals of initial interest
+        with open('../sql/seed.sql', 'r') as f:
             query = f.read()
             conn.execute(text(query))
 

@@ -1,10 +1,7 @@
-from airflow import DAG
 from airflow.decorators import dag, task
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 import logging
 import datetime as dt
-from dotenv import load_dotenv, find_dotenv
-import os
 from custom_hooks.parametrizedHttp import ParametizedHttpHook
 import json
 from airflow.models import Variable
@@ -12,14 +9,13 @@ from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 from airflow.exceptions import AirflowFailException
 from airflow.providers.amazon.aws.operators.s3 import S3DeleteObjectsOperator
+from utils.error_decorator import error_check
 
 
-load_dotenv(find_dotenv())
-# change it with native airflow logger
 logger = logging.getLogger('metal_ingestion')
 
 default_args = {
-    'owner': 'x',
+    'owner': Variable.get('_airflow_owner'),
     'retry': 3,
     'retry_delay': dt.timedelta(minutes=5),
 }
@@ -29,10 +25,12 @@ default_args = {
     schedule_interval=dt.timedelta(hours=1),
     description="Metal prices ingestion pipeline",
     start_date=dt.datetime(2024, 1, 25),
-    catchup=False,
+    is_paused_upon_creation=False,
     default_args=default_args)
 def get_metals_prices():
+
     @task
+    @error_check
     def get_searchable_metals():
         postgres = PostgresHook(postgres_conn_id='postgres')
         results = postgres.get_records(
@@ -40,7 +38,8 @@ def get_metals_prices():
         results = [entry[0] for entry in results]
         return results
 
-    @task()
+    @task
+    @error_check
     def get_metal_data(results):
         hook = ParametizedHttpHook('metals_api')
         resp = hook.run('/v1/latest', params={'api_key': Variable.get(
@@ -53,9 +52,12 @@ def get_metals_prices():
 
         return timestamp
 
-    @task()
+    @task
+    @error_check
     def insert_metal_data(timestamp):
+
         s3hook = S3Hook('aws')
+        print(s3hook.list_keys(bucket_name=Variable.get("bucket_name_api_data")))
         postgres = PostgresHook(postgres_conn_id='postgres')
         data = s3hook.get_key(f"{timestamp}.json",
                               bucket_name=Variable.get("bucket_name_api_data"))

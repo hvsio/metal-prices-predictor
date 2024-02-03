@@ -1,7 +1,6 @@
 import logging
 import os
 
-from dotenv import find_dotenv, load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.engine.base import Connection, Engine
 from sqlalchemy.exc import SQLAlchemyError
@@ -19,8 +18,7 @@ def get_db_connection(force_create: False) -> (Engine, Connection):
         Engine: database engine
         Connection: database connection
     """
-    load_dotenv(find_dotenv())
-
+    
     db_url = (
         f"postgresql://{os.environ.get('db_user')}"
         f":{os.environ.get('db_pass')}"

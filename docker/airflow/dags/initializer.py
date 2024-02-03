@@ -1,36 +1,35 @@
 from airflow.decorators import dag, task
 import datetime as dt
-from dotenv import load_dotenv, find_dotenv
 from airflow.models import Variable
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 from airflow.providers.amazon.aws.operators.s3 import S3CreateBucketOperator
 from airflow.models import Variable
-from airflow.operators.dummy import DummyOperator  
+from utils.error_decorator import error_check
 
-load_dotenv(find_dotenv())
-# change it with native airflow logger
 
 default_args = {
-    'owner': 'x',
+    'owner': Variable.get('metals_api_token'),
     'retry': 3,
     'retry_delay': dt.timedelta(minutes=5),
 }
 
-
 @dag(
     schedule_interval=dt.timedelta(hours=1),
     description="Initialize metal pipeline",
-    start_date=dt.datetime(2024, 1, 30),
-    is_paused_upon_creation=True,
+    start_date=dt.datetime(2024, 1, 25),
+    is_paused_upon_creation=False,
     default_args=default_args)
 def intialize_aws():
+
     @task
+    @error_check
     def check_for_bucket_model_data():
         s3 = S3Hook('aws')
         is_bucket_present = s3.check_for_bucket(Variable.get("bucket_name_model_data"))
         return is_bucket_present
 
+    
     @task.branch(task_id="branching_model")
     def branching_model(bucket_exists):
         if bucket_exists:
@@ -45,6 +44,7 @@ def intialize_aws():
     )
         
     @task
+    @error_check
     def check_for_bucket_api_data():
         s3 = S3Hook('aws')
         is_bucket_present = s3.check_for_bucket(Variable.get("bucket_name_api_data"))
@@ -57,7 +57,8 @@ def intialize_aws():
         else:
             return 'create_bucket_api_data'
 
-    @task()
+    @task
+    @error_check
     def bucket_ready():
         print('Bucket is already created.')
 
