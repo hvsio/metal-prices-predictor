@@ -1,4 +1,5 @@
 import datetime as dt
+import logging
 
 from airflow.decorators import dag, task
 from airflow.models import Variable
@@ -13,6 +14,7 @@ default_args = {
     'retry_delay': dt.timedelta(minutes=5),
 }
 
+logger = logging.getLogger('backup')
 
 @dag(
     schedule_interval=dt.timedelta(hours=1),
@@ -62,11 +64,11 @@ def intialize_aws():
 
     @task
     def bucket_ready_model_data():
-        print('Bucket for models is already created.')
+        logger.info('Bucket for models is already created.')
 
     @task
     def bucket_ready_api_data():
-        print('Bucket for API data is already created.')
+        logger.info('Bucket for API data is already created.')
 
     create_bucket_api_data = S3CreateBucketOperator(
         aws_conn_id='aws',

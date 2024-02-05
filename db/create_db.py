@@ -74,12 +74,12 @@ with get_db_connection(True) as (engine, conn):
         )
 
         # create view with last 12h data for model training
-        with open('../sql/12h_metal_prices_view.sql', 'r') as f:
+        with open('sql/12h_metal_prices_view.sql', 'r') as f:
             query = f.read()
             conn.execute(text(query))
 
         # seed the db with metals of initial interest
-        with open('../sql/seed.sql', 'r') as f:
+        with open('sql/seed.sql', 'r') as f:
             query = f.read()
             conn.execute(text(query))
 

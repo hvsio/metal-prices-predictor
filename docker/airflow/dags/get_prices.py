@@ -68,9 +68,6 @@ def get_metals_prices():
     def insert_metal_data(timestamp):
 
         s3hook = S3Hook('aws')
-        print(
-            s3hook.list_keys(bucket_name=Variable.get('bucket_name_api_data'))
-        )
         postgres = PostgresHook(postgres_conn_id='postgres')
         data = s3hook.get_key(
             f'{timestamp}.json',
