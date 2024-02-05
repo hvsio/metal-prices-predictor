@@ -1,12 +1,13 @@
 import datetime
+import os
 import time
+from pathlib import Path
+from typing import List, Tuple
+
 import numpy as np
 import pandas as pd
-from pathlib import Path
-from sktime.forecasting.arima import ARIMA
-from typing import List, Tuple
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
-import os
+from sktime.forecasting.arima import ARIMA
 
 rng = np.random.default_rng()
 
@@ -36,7 +37,9 @@ def generate_sample_data(
             col_name: generate_integrated_autocorrelated_series(
                 ar_coefficient, mean, STD, x_size + y_size
             )
-            for ar_coefficient, mean, col_name in zip(ar_coefficients, means, cols)
+            for ar_coefficient, mean, col_name in zip(
+                ar_coefficients, means, cols
+            )
         }
     )
     return (
@@ -63,19 +66,26 @@ class Model:
             raise ValueError('Missing data')
         for ticker in self.tickers:
             dataset = data[data['metal_type'] == ticker]['price'].values
-            model = ARIMA(order=(1, 1, 0), with_intercept=True,
-                          suppress_warnings=True)
+            model = ARIMA(
+                order=(1, 1, 0), with_intercept=True, suppress_warnings=True
+            )
             model.fit(dataset)
             self.models[ticker] = model
 
-    def save(self, path_to_dir: str, s3_hook: S3Hook, bucket_name: str) -> None:
+    def save(
+        self, path_to_dir: str, s3_hook: S3Hook, bucket_name: str
+    ) -> None:
         path_to_dir = Path(path_to_dir)
         path_to_dir.mkdir(parents=True, exist_ok=True)
         for ticker in self.tickers:
             full_path = path_to_dir / ticker
             self.models[ticker].save(full_path)
             s3_hook.load_file(
-                f"{full_path}.zip", key=f"{ticker}_{time.time()}.gzip", bucket_name=bucket_name, gzip=True)
-            if os.path.exists(f"{full_path}.zip"):
-                os.remove(f"{full_path}.zip")
-                os.remove(f"{full_path}.zip.gz")
+                f'{full_path}.zip',
+                key=f'{ticker}_{time.time()}.gzip',
+                bucket_name=bucket_name,
+                gzip=True,
+            )
+            if os.path.exists(f'{full_path}.zip'):
+                os.remove(f'{full_path}.zip')
+                os.remove(f'{full_path}.zip.gz')

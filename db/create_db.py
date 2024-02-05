@@ -1,12 +1,15 @@
-from dotenv import find_dotenv, load_dotenv
-from sqlalchemy import Sequence, Table, Column, Boolean, Integer, String, MetaData, Float, DateTime, ForeignKeyConstraint, text, inspect
-from sqlalchemy.schema import CreateSchema
-from sqlalchemy.exc import SQLAlchemyError
-from utils import get_db_connection
 import logging
 import os
 
-logger = logging.getLogger("postgres_logger")
+from dotenv import find_dotenv, load_dotenv
+from sqlalchemy import (Boolean, Column, DateTime, Float, ForeignKeyConstraint,
+                        Integer, MetaData, Sequence, String, Table, inspect,
+                        text)
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.schema import CreateSchema
+from utils import get_db_connection
+
+logger = logging.getLogger('postgres_logger')
 
 load_dotenv(find_dotenv())
 
@@ -21,22 +24,32 @@ metadata_obj = MetaData(schema=schema_name)
 metals = Table(
     tablename_metals,
     metadata_obj,
-    Column("ticker", String(10), nullable=False, primary_key=True),
-    Column("abbreviation", String(10), nullable=False, primary_key=False),
-    Column("fullname", String(20), nullable=False),
-    Column("active", Boolean, nullable=False, default=False),
+    Column('ticker', String(10), nullable=False, primary_key=True),
+    Column('abbreviation', String(10), nullable=False, primary_key=False),
+    Column('fullname', String(20), nullable=False),
+    Column('active', Boolean, nullable=False, default=False),
 )
 
 metal_prices_table = Table(
     tablename_metals_prices,
     metadata_obj,
-    Column("id", Integer, Sequence('metals_sequence', start=1,
-           increment=1), primary_key=True,  autoincrement=True),
-    Column("metal_type", String(20), nullable=True),
-    ForeignKeyConstraint(["metal_type"], ["metals.ticker"], name="fk_metal_id", onupdate="CASCADE",
-                         ondelete="SET NULL"),
-    Column("price", Float, nullable=False),
-    Column("timestamp", DateTime, nullable=False),
+    Column(
+        'id',
+        Integer,
+        Sequence('metals_sequence', start=1, increment=1),
+        primary_key=True,
+        autoincrement=True,
+    ),
+    Column('metal_type', String(20), nullable=True),
+    ForeignKeyConstraint(
+        ['metal_type'],
+        ['metals.ticker'],
+        name='fk_metal_id',
+        onupdate='CASCADE',
+        ondelete='SET NULL',
+    ),
+    Column('price', Float, nullable=False),
+    Column('timestamp', DateTime, nullable=False),
 )
 
 with get_db_connection(True) as (engine, conn):

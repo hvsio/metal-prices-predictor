@@ -1,9 +1,10 @@
-from airflow.hooks.base_hook import BaseHook
-from airflow.exceptions import AirflowFailException
-import requests
 import logging
 
-logger = logging.getLogger("utils_logger")
+import requests
+from airflow.exceptions import AirflowFailException
+from airflow.hooks.base_hook import BaseHook
+
+logger = logging.getLogger('utils_logger')
 
 
 class ParametizedHttpHook(BaseHook):
@@ -25,13 +26,13 @@ class ParametizedHttpHook(BaseHook):
         """
         try:
             host = self.get_conn()
-            url = f"{host}{endpoint}"
+            url = f'{host}{endpoint}'
             response = requests.get(url, data=data, params=params)
         except requests.exceptions.HTTPError as e:
             raise AirflowFailException(e)
 
         if response.status_code != 200:
-            self.log.error("HTTP request failed: %s", response.text)
+            self.log.error('HTTP request failed: %s', response.text)
             response.raise_for_status()
 
         return response

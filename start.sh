@@ -4,7 +4,7 @@ filepath=$(pwd)
 
 # Start Airflow
 docker compose up airflow-init
-docker compose ./.env up -d
+docker compose up -d
 
 # Create table for job data
 poetry run python3 ./db/create_db.py
