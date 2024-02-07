@@ -12,6 +12,7 @@ This project utilizes Apache Airflow to automate the process of pulling metals p
     - `docker/airflow/plugins/scripts/.env.example` holds variables that will be inserted as Airflow Variables and used to create Airlow Connections.
 
 2. Local postgresql running
+3. Run `start.sh`script
 
 ## Project Structure
 
